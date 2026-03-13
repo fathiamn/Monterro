@@ -4,7 +4,6 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Where every path begins.</title>
-  <link rel="icon" type="image/png" href="logo2.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -122,6 +121,35 @@
     }
     .create-account { font-size: 12px; color: #888; text-align: center; }
     .create-account a { color: #111; font-weight: 600; text-decoration: none; }
+
+    /* ANIMATIONS */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes fadeRight {
+      from { opacity: 0; transform: translateX(32px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .hero h1        { animation: fadeUp 0.7s ease both; animation-delay: 0.1s; }
+    .hero p         { animation: fadeUp 0.7s ease both; animation-delay: 0.25s; }
+    .btn-start      { animation: fadeUp 0.7s ease both; animation-delay: 0.4s; }
+    .hero-img img   { animation: fadeRight 0.9s ease both; animation-delay: 0.2s; }
+
+    .stat           { opacity: 0; animation: fadeUp 0.6s ease forwards; }
+    .stat:nth-child(1) { animation-delay: 0.1s; }
+    .stat:nth-child(2) { animation-delay: 0.25s; }
+    .stat:nth-child(3) { animation-delay: 0.4s; }
+
+    .left-panel     { animation: fadeUp 0.7s ease both; animation-delay: 0.15s; }
+    .login-card     { animation: fadeUp 0.7s ease both; animation-delay: 0.3s; }
+
+    nav             { animation: fadeIn 0.6s ease both; animation-delay: 0s; }
   </style>
 </head>
 <body>
@@ -144,7 +172,7 @@
   <section class="hero">
     <div class="hero-left">
       <h1>Where every<br>path begins.</h1>
-      <p>Track the trails and conquer<br>every hike.</p>
+      <p>Track the trails and conquer<br>every hike</p>
       <button class="btn-start" onclick="const s=document.getElementById('stats'); const y=s.getBoundingClientRect().top+window.scrollY+s.offsetHeight-120; window.scrollTo({top:y,behavior:'smooth'})">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/>
@@ -216,6 +244,7 @@
       <p class="create-account">Already have an account? &nbsp;<a href="#" onclick="showCard('loginCard'); return false;">Log in</a></p>
     </div>
   </div>
+
   <p style="text-align:center; font-size:11px; color:#aaa; padding:12px 0 20px; font-family:'Poppins',sans-serif; letter-spacing:0.3px;">© 2026 Monterro · Fathia Nugraha. All rights reserved.</p>
 
 </div>
@@ -256,9 +285,4 @@
 </script>
 
 </body>
-
 </html>
-
-
-
-
