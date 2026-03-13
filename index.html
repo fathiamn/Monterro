@@ -124,7 +124,7 @@
 
     /* ANIMATIONS */
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
+      from { opacity: 0; transform: translateY(28px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     @keyframes fadeIn {
@@ -132,24 +132,33 @@
       to   { opacity: 1; }
     }
     @keyframes fadeRight {
-      from { opacity: 0; transform: translateX(32px); }
+      from { opacity: 0; transform: translateX(36px); }
       to   { opacity: 1; transform: translateX(0); }
     }
 
-    .hero h1        { animation: fadeUp 0.7s ease both; animation-delay: 0.1s; }
-    .hero p         { animation: fadeUp 0.7s ease both; animation-delay: 0.25s; }
-    .btn-start      { animation: fadeUp 0.7s ease both; animation-delay: 0.4s; }
-    .hero-img img   { animation: fadeRight 0.9s ease both; animation-delay: 0.2s; }
+    /* Hero fires immediately on load */
+    .hero h1      { animation: fadeUp 0.7s ease both 0.1s; }
+    .hero p       { animation: fadeUp 0.7s ease both 0.25s; }
+    .btn-start    { animation: fadeUp 0.7s ease both 0.4s; }
+    .hero-img img { animation: fadeRight 0.9s ease both 0.2s; }
+    nav           { animation: fadeIn 0.6s ease both 0s; }
 
-    .stat           { opacity: 0; animation: fadeUp 0.6s ease forwards; }
-    .stat:nth-child(1) { animation-delay: 0.1s; }
-    .stat:nth-child(2) { animation-delay: 0.25s; }
-    .stat:nth-child(3) { animation-delay: 0.4s; }
-
-    .left-panel     { animation: fadeUp 0.7s ease both; animation-delay: 0.15s; }
-    .login-card     { animation: fadeUp 0.7s ease both; animation-delay: 0.3s; }
-
-    nav             { animation: fadeIn 0.6s ease both; animation-delay: 0s; }
+    /* Scroll-reveal base state */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.65s ease, transform 0.65s ease;
+    }
+    .reveal.from-right {
+      transform: translateX(36px);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+    .reveal.delay-1 { transition-delay: 0.1s; }
+    .reveal.delay-2 { transition-delay: 0.22s; }
+    .reveal.delay-3 { transition-delay: 0.34s; }
   </style>
 </head>
 <body>
@@ -189,15 +198,15 @@
 
   <!-- STATS -->
   <div class="stats" id="stats">
-    <div class="stat">
+    <div class="stat reveal delay-1">
       <div class="stat-icon"><img src="nav.png" alt=""/></div>
       <div class="stat-label">Travelled<br>distance.</div>
     </div>
-    <div class="stat">
+    <div class="stat reveal delay-2">
       <div class="stat-icon"><img src="step.png" alt=""/></div>
       <div class="stat-label">Step<br>count.</div>
     </div>
-    <div class="stat">
+    <div class="stat reveal delay-3">
       <div class="stat-icon"><img src="route.png" alt=""/></div>
       <div class="stat-label">Route<br>records.</div>
     </div>
@@ -205,7 +214,7 @@
 
   <!-- BOTTOM -->
   <div class="bottom" id="login">
-    <div class="left-panel">
+    <div class="left-panel reveal">
       <div class="logo-badge" style="border:none; padding:0; margin-bottom:18px;">
         <img src="logo.png" alt="logo" style="height:32px; width:auto;"/>
       </div>
@@ -215,7 +224,7 @@
     </div>
 
     <!-- LOGIN CARD -->
-    <div class="login-card" id="loginCard">
+    <div class="login-card reveal delay-2" id="loginCard">
       <h3>Welcome to<br>Monterro</h3>
       <div class="form-group">
         <label>E-mail</label>
@@ -282,6 +291,17 @@
       input.value = '';
     }
   }
+  // Scroll-reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 </script>
 
 </body>
