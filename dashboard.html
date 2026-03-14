@@ -192,14 +192,14 @@
         <div class="card">
           <div class="card-title">Total Distance</div>
           <div class="card-body">
-            <div class="card-value"><span data-count="14.09" data-decimals="2">0</span><span class="unit">km</span></div>
+            <div class="card-value"><span id="dist" data-decimals="2">0</span><span class="unit">m</span></div>
             <div class="card-footer"><span class="card-badge up"><span class="arrow-up"></span> 25%</span><span class="card-compare">compared to yesterday</span></div>
           </div>
         </div>
         <div class="card">
           <div class="card-title">Step Count</div>
           <div class="card-body">
-            <div class="card-value"><span data-count="71124" data-decimals="0" data-comma="true">0</span><span class="unit">steps</span></div>
+            <div class="card-value"><span id="steps" data-decimals="0" data-comma="true">0</span><span class="unit">steps</span></div>
             <div class="card-footer"><span class="card-badge up"><span class="arrow-up"></span> 25%</span><span class="card-compare">compared to yesterday</span></div>
           </div>
         </div>
@@ -281,6 +281,24 @@
       el.textContent = display;
     }, duration / steps);
   }
+  
+  const ws = new WebSocket("ws://<pi-ip>:8765");
+
+  ws.onopen = () => console.log("WS connected");
+  ws.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      if (msg.t === "hike") {
+        // example:
+        document.getElementById("steps").textContent = msg.stp;
+        document.getElementById("dist").textContent = msg.dst;
+        document.getElementById("dur").textContent = msg.dur;
+      }
+    } catch (e) {
+      console.log("bad msg", ev.data);
+    }
+  };
+  ws.onclose = () => console.log("WS closed");
 
   document.querySelectorAll('[data-count]').forEach(el => countUp(el));
 </script>
