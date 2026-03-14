@@ -199,7 +199,7 @@
         <div class="card">
           <div class="card-title">Step Count</div>
           <div class="card-body">
-            <div class="card-value"><span id="steps" data-decimals="0" data-comma="true">0</span><span class="unit">steps</span></div>
+            <div class="card-value"><span id="stp" data-decimals="0" data-comma="true">0</span><span class="unit">steps</span></div>
             <div class="card-footer"><span class="card-badge up"><span class="arrow-up"></span> 25%</span><span class="card-compare">compared to yesterday</span></div>
           </div>
         </div>
@@ -282,7 +282,7 @@
     }, duration / steps);
   }
   
-  const ws = new WebSocket("ws://<pi-ip>:8765");
+  const ws = new WebSocket("wss://<pi-ip>:8765");
 
   ws.onopen = () => console.log("WS connected");
   ws.onmessage = (ev) => {
@@ -290,7 +290,7 @@
       const msg = JSON.parse(ev.data);
       if (msg.t === "hike") {
         // example:
-        document.getElementById("steps").textContent = msg.stp;
+        document.getElementById("stp").textContent = msg.stp;
         document.getElementById("dist").textContent = msg.dst;
         document.getElementById("dur").textContent = msg.dur;
       }
