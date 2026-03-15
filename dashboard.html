@@ -261,6 +261,7 @@
     </div>
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // Count-up animation on load
   function countUp(el) {
@@ -281,17 +282,21 @@
       el.textContent = display;
     }, duration / steps);
   }
-  
-  const { createClient } = supabase;
-const sb = createClient("https://sudlejmejjlairgxdlzi.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo");
 
-sb.channel("twatch-activity")
-  .on("broadcast", { event: "live_update" }, ({ payload }) => {
-      document.getElementById("stp").textContent = payload.steps;
-      document.getElementById("dst").textContent = payload.distance;
-      document.getElementById("dur").textContent = payload.duration;
-  })
-  .subscribe();
+  const { createClient } = supabase;
+  const sb = createClient(
+    "https://sudlejmejjlairgxdlzi.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo"
+  );
+
+  sb.channel("twatch-activity")
+    .on("broadcast", { event: "live_update" }, ({ payload }) => {
+      if (payload.steps    != null) document.getElementById("stp").textContent  = payload.steps.toLocaleString();
+      if (payload.distance != null) document.getElementById("dist").textContent = payload.distance.toFixed(2);
+    })
+    .subscribe((status) => {
+      console.log("[Supabase]", status);
+    });
 
   document.querySelectorAll('[data-count]').forEach(el => countUp(el));
 </script>
