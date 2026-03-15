@@ -282,23 +282,16 @@
     }, duration / steps);
   }
   
-  const ws = new WebSocket("wss://<pi-ip>:8765");
+  const { createClient } = supabase;
+const sb = createClient("https://sudlejmejjlairgxdlzi.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo");
 
-  ws.onopen = () => console.log("WS connected");
-  ws.onmessage = (ev) => {
-    try {
-      const msg = JSON.parse(ev.data);
-      if (msg.t === "hike") {
-        // example:
-        document.getElementById("stp").textContent = msg.stp;
-        document.getElementById("dist").textContent = msg.dst;
-        document.getElementById("dur").textContent = msg.dur;
-      }
-    } catch (e) {
-      console.log("bad msg", ev.data);
-    }
-  };
-  ws.onclose = () => console.log("WS closed");
+sb.channel("twatch-activity")
+  .on("broadcast", { event: "live_update" }, ({ payload }) => {
+      document.getElementById("stp").textContent = payload.steps;
+      document.getElementById("dst").textContent = payload.distance;
+      document.getElementById("dur").textContent = payload.duration;
+  })
+  .subscribe();
 
   document.querySelectorAll('[data-count]').forEach(el => countUp(el));
 </script>
