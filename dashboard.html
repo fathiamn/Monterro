@@ -260,45 +260,74 @@
 
     </div>
   </div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Count-up animation on load
-  function countUp(el) {
-    const target = parseFloat(el.getAttribute('data-count'));
-    const decimals = parseInt(el.getAttribute('data-decimals')) || 0;
-    const useComma = el.getAttribute('data-comma') === 'true';
-    const duration = 1200;
-    const steps = 60;
-    const increment = target / steps;
-    let current = 0;
-    let step = 0;
-    const timer = setInterval(() => {
-      step++;
-      current += increment;
-      if (step >= steps) { current = target; clearInterval(timer); }
-      let display = current.toFixed(decimals);
-      if (useComma) display = Math.round(current).toLocaleString();
-      el.textContent = display;
-    }, duration / steps);
+const { createClient } = supabase;
+const sb = createClient(
+  "https://sudlejmejjlairgxdlzi.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo"
+);
+
+// ── Count-up animation on page load ───────────────────────────────────────────
+function countUp(el) {
+  const target   = parseFloat(el.getAttribute('data-count'));
+  const decimals = parseInt(el.getAttribute('data-decimals')) || 0;
+  const useComma = el.getAttribute('data-comma') === 'true';
+  const duration = 1200;
+  const steps    = 60;
+  const increment = target / steps;
+  let current = 0, step = 0;
+  const timer = setInterval(() => {
+    step++;
+    current += increment;
+    if (step >= steps) { current = target; clearInterval(timer); }
+    let display = current.toFixed(decimals);
+    if (useComma) display = Math.round(current).toLocaleString();
+    el.textContent = display;
+  }, duration / steps);
+}
+
+// ── Update display elements ───────────────────────────────────────────────────
+function updateDisplay(payload) {
+  console.log("[Supabase] live_update received:", payload);
+
+  const stpEl  = document.getElementById("stp");
+  const distEl = document.getElementById("dist");
+
+  if (payload.steps != null && stpEl) {
+    stpEl.textContent = Number(payload.steps).toLocaleString();
   }
 
-  const { createClient } = supabase;
-  const sb = createClient(
-    "https://sudlejmejjlairgxdlzi.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo"
-  );
+  if (payload.distance != null && distEl) {
+    distEl.textContent = Number(payload.distance).toFixed(2);
+  }
+}
 
-  sb.channel("twatch-activity")
-    .on("broadcast", { event: "live_update" }, ({ payload }) => {
-      if (payload.steps    != null) document.getElementById("stp").textContent  = payload.steps.toLocaleString();
-      if (payload.distance != null) document.getElementById("dist").textContent = payload.distance.toFixed(2);
-    })
-    .subscribe((status) => {
-      console.log("[Supabase]", status);
-    });
+// ── Supabase Realtime subscription ───────────────────────────────────────────
+sb.channel("twatch-activity")
+  .on("broadcast", { event: "live_update" }, ({ payload }) => {
+    updateDisplay(payload);
+  })
+  .on("broadcast", { event: "status" }, ({ payload }) => {
+    console.log("[Supabase] status:", payload);
+    // ★ Update the watch dot based on connection status
+    const dot = document.querySelector(".watch-dot");
+    const badge = document.querySelector(".watch-badge");
+    if (dot && badge) {
+      if (payload.connected) {
+        dot.style.background = "#fff";
+        badge.style.background = "#111";
+      } else {
+        dot.style.background = "#ff4757";
+        badge.style.background = "#333";
+      }
+    }
+  })
+  .subscribe((status) => {
+    console.log("[Supabase] channel status:", status);
+  });
 
-  document.querySelectorAll('[data-count]').forEach(el => countUp(el));
+// ── Run count-up on page load ─────────────────────────────────────────────────
+document.querySelectorAll('[data-count]').forEach(el => countUp(el));
 </script>
 
 </body>
