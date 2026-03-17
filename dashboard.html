@@ -348,14 +348,11 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo";
   const CHANNEL_NAME = "twatch-activity";
 
-  // ★ Change to Pi IP if raspberrypi.local doesn't resolve
-  const PI_URL = "http://raspberrypi.local:5000";
-
-  console.log("dashboard v2026-03-17-E");
+  console.log("dashboard v2026-03-17-F");
 
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────────
   function fmtDuration(s) {
     const h   = Math.floor(s / 3600);
     const m   = Math.floor((s % 3600) / 60);
@@ -377,7 +374,7 @@
     }
   }
 
-  // ── Update live cards ─────────────────────────────────────────────────────────
+  // ── Update live cards ──────────────────────────────────────────────────────────
   function updateLive(payload) {
     console.log("[live_update]", payload);
     const steps    = payload.steps    ?? 0;
@@ -396,9 +393,9 @@
     if (calEl)  calEl.textContent  = calories;
   }
 
-  // ── Update last session panel ─────────────────────────────────────────────────
+  // ── Update last session panel ──────────────────────────────────────────────────
   function updateLastSession(data) {
-    console.log("[last session]", data);
+    console.log("[session_end]", data);
     const lsSteps = document.getElementById("ls-steps");
     const lsDist  = document.getElementById("ls-dist");
     const lsDur   = document.getElementById("ls-dur");
@@ -415,19 +412,7 @@
     }
   }
 
-  // ── Fetch last session from Pi on page load ───────────────────────────────────
-  async function fetchLastSession() {
-    try {
-      const res = await fetch(`${PI_URL}/last-session`);
-      if (!res.ok) return;
-      const data = await res.json();
-      updateLastSession(data);
-    } catch (e) {
-      console.warn("[Pi] Could not fetch last session:", e.message);
-    }
-  }
-
-  // ── Supabase subscription ─────────────────────────────────────────────────────
+  // ── Supabase subscription ──────────────────────────────────────────────────────
   let activeChannel = null;
 
   function subscribe() {
@@ -447,7 +432,6 @@
     })
     .on("broadcast", { event: "session_end" }, ({ payload }) => {
       updateLastSession(payload);
-      console.log("[session_end]", payload);
     })
     .on("broadcast", { event: "status" }, ({ payload }) => {
       setWatchStatus(payload.connected);
@@ -467,9 +451,8 @@
     subscribe();
   }, 25000);
 
-  // ── Init ──────────────────────────────────────────────────────────────────────
-  fetchLastSession();  // load last session from Pi on page open
-  subscribe();         // start Supabase live subscription
+  // ── Init ───────────────────────────────────────────────────────────────────────
+  subscribe();
 </script>
 
 </body>
