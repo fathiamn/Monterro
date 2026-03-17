@@ -23,7 +23,7 @@
       box-shadow: 0 4px 40px rgba(0,0,0,0.08);
     }
 
-    /* NAV - same as web.html */
+    /* NAV */
     nav {
       display: flex; justify-content: space-between; align-items: center;
       gap: 32px; padding: 10px 24px;
@@ -38,7 +38,6 @@
     }
     .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
     .nav-logo img { height: 28px; width: auto; object-fit: contain; }
-    .nav-logo span { font-size: 15px; font-weight: 700; color: #111; }
     .nav-links { display: flex; align-items: center; gap: 32px; }
     nav a { font-size: 14px; font-weight: 400; color: #999; text-decoration: none; }
     nav a.active { font-weight: 600; color: #111; }
@@ -62,7 +61,9 @@
       font-size: 12px; font-weight: 600;
       padding: 8px 18px; border-radius: 100px;
       display: flex; align-items: center; gap: 10px;
+      transition: background 0.3s;
     }
+    .watch-badge.disconnected { background: #cc3333; }
     .watch-dot {
       width: 10px; height: 10px; border-radius: 50%; background: #fff;
       box-shadow: 0 0 8px 4px rgba(255,255,255,1), 0 0 20px 10px rgba(255,255,255,0.6), 0 0 30px 14px rgba(255,255,255,0.3);
@@ -73,9 +74,17 @@
     }
     .watch-name img { width: 22px; height: 22px; object-fit: contain; }
 
-    /* STAT CARDS ROW */
-    .cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-bottom: 36px; }
-    .cards-row .card { height: 140px; }
+    /* SECTION LABEL */
+    .section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
+      text-transform: uppercase; color: #999;
+      margin-bottom: 14px; margin-top: 4px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-label::after { content: ''; flex: 1; height: 1px; background: #c8c8c8; }
+
+    /* STAT CARDS */
+    .cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 8px; }
     .card { background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid #c8c8c8; }
     .card-title {
       font-size: 11px; font-weight: 400; color: #111;
@@ -90,7 +99,7 @@
       display: flex; align-items: baseline; gap: 4px;
       justify-content: center;
     }
-    .card-value [data-count] { font-size: 38px; font-weight: 800; color: #111; line-height: 1; }
+    .card-value .val { font-size: 38px; font-weight: 800; color: #111; line-height: 1; }
     .card-value .unit { font-size: 12px; font-weight: 400; color: #666; }
     .card-badge {
       display: inline-flex; align-items: center; gap: 4px;
@@ -98,61 +107,77 @@
       padding: 3px 8px; border-radius: 100px;
       margin-right: 5px;
     }
-    .card-badge.up { background: #dcfce7; color: #16a34a; }
+    .card-badge.up   { background: #dcfce7; color: #16a34a; }
     .card-badge.down { background: #fee2e2; color: #dc2626; }
     .card-compare { font-size: 10px; color: #444; font-weight: 500; }
     .card-footer { text-align: center; }
-    .arrow-up::before { content: '↑'; }
+    .arrow-up::before   { content: '↑'; }
     .arrow-down::before { content: '↓'; }
 
-    /* BOTTOM ROW — same height as top cards */
-    .bottom-row { display: grid; grid-template-columns: 1fr 2fr; gap: 36px; margin-bottom: 36px; }
+    /* LAST SESSION CARD */
+    .last-session-card {
+      background: #fff;
+      border: 1px solid #c8c8c8;
+      border-radius: 16px;
+      padding: 16px 20px 14px;
+      margin-bottom: 8px;
+    }
+    .last-session-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .ls-item { text-align: center; }
+    .ls-label {
+      font-size: 10px; font-weight: 500; letter-spacing: 1px;
+      text-transform: uppercase; color: #999; margin-bottom: 4px;
+    }
+    .ls-value { font-size: 26px; font-weight: 800; color: #111; line-height: 1; }
+    .ls-unit  { font-size: 10px; color: #999; margin-top: 2px; }
+    .ls-time  { font-size: 10px; color: #bbb; margin-top: 10px; text-align: right; }
+
+    /* BOTTOM ROW */
+    .bottom-row { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px; }
     .bottom-row .card { height: 140px; display: flex; flex-direction: column; }
 
     /* MAP */
     .map-card { border-radius: 16px; overflow: hidden; position: relative; background: #111; border: 1px solid #c8c8c8; }
     .map-card img { width: 100%; display: block; object-fit: cover; }
-    .map-overlay {
-      position: absolute; top: 20px; left: 20px;
-      background: #fff; border-radius: 12px; padding: 16px 20px;
-    }
-    .map-overlay-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #111; margin-bottom: 10px; }
-    .map-stat { display: flex; align-items: baseline; gap: 4px; margin-bottom: 4px; }
-    .map-stat-val { font-size: 32px; font-weight: 700; color: #111; line-height: 1; }
-    .map-stat-unit { font-size: 13px; font-weight: 600; color: #111; }
-    .map-stat-label { font-size: 11px; color: #999; }
-
-    /* COUNT UP ANIMATION */
-    .card-value [data-count] { display: inline; }
 
     /* ANIMATIONS */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(20px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes pulse {
       0%, 100% { box-shadow: 0 0 8px 4px rgba(255,255,255,1), 0 0 20px 10px rgba(255,255,255,0.6), 0 0 30px 14px rgba(255,255,255,0.3); }
       50%       { box-shadow: 0 0 12px 6px rgba(255,255,255,1), 0 0 28px 14px rgba(255,255,255,0.7), 0 0 40px 20px rgba(255,255,255,0.4); }
     }
 
-    nav              { animation: fadeIn 0.5s ease both; }
-    .watch-bar       { animation: fadeUp 0.6s ease both; animation-delay: 0.1s; }
-    .watch-dot       { animation: pulse 2s ease-in-out infinite; }
+    nav        { animation: fadeIn 0.5s ease both; }
+    .watch-bar { animation: fadeUp 0.6s ease both; animation-delay: 0.1s; }
+    .watch-dot { animation: pulse 2s ease-in-out infinite; }
 
-    .cards-row .card        { opacity: 0; animation: fadeUp 0.6s ease forwards; }
-    .cards-row .card:nth-child(1) { animation-delay: 0.15s; }
-    .cards-row .card:nth-child(2) { animation-delay: 0.28s; }
-    .cards-row .card:nth-child(3) { animation-delay: 0.41s; }
+    .cards-row .card:nth-child(1) { opacity:0; animation: fadeUp 0.6s 0.15s ease forwards; }
+    .cards-row .card:nth-child(2) { opacity:0; animation: fadeUp 0.6s 0.25s ease forwards; }
+    .cards-row .card:nth-child(3) { opacity:0; animation: fadeUp 0.6s 0.35s ease forwards; }
+    .last-session-card            { opacity:0; animation: fadeUp 0.6s 0.45s ease forwards; }
+    .bottom-row .card:nth-child(1){ opacity:0; animation: fadeUp 0.6s 0.55s ease forwards; }
+    .bottom-row .card:nth-child(2){ opacity:0; animation: fadeUp 0.6s 0.65s ease forwards; }
+    .map-card                     { opacity:0; animation: fadeUp 0.7s 0.80s ease forwards; }
 
-    .bottom-row .card       { opacity: 0; animation: fadeUp 0.6s ease forwards; }
-    .bottom-row .card:nth-child(1) { animation-delay: 0.55s; }
-    .bottom-row .card:nth-child(2) { animation-delay: 0.65s; }
-
-    .map-card        { opacity: 0; animation: fadeUp 0.7s ease forwards; animation-delay: 0.8s; }
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      body { padding: 80px 12px 40px; }
+      .device { width: 100%; border-radius: 16px; }
+      nav { width: calc(100% - 24px); }
+      .cards-row { grid-template-columns: 1fr; gap: 12px; }
+      .last-session-grid { grid-template-columns: repeat(2, 1fr); }
+      .bottom-row { grid-template-columns: 1fr; gap: 12px; }
+      .card-value .val { font-size: 30px; }
+    }
   </style>
 </head>
 <body>
@@ -177,9 +202,9 @@
 
       <!-- WATCH BAR -->
       <div class="watch-bar">
-        <div class="watch-badge">
+        <div class="watch-badge" id="watch-badge">
           <div class="watch-dot"></div>
-          Watch Connected
+          <span id="watch-status">Connecting...</span>
         </div>
         <div class="watch-name">
           LILYGO T-Watch-2020 V2
@@ -187,38 +212,90 @@
         </div>
       </div>
 
-      <!-- STAT CARDS -->
+      <!-- LIVE SESSION -->
+      <div class="section-label">Live session</div>
       <div class="cards-row">
         <div class="card">
           <div class="card-title">Total Distance</div>
           <div class="card-body">
-            <div class="card-value"><span id="dist" data-decimals="2">0</span><span class="unit">m</span></div>
-            <div class="card-footer"><span class="card-badge up"><span class="arrow-up"></span> 25%</span><span class="card-compare">compared to yesterday</span></div>
+            <div class="card-value">
+              <span class="val" id="dist">0</span>
+              <span class="unit">m</span>
+            </div>
+            <div class="card-footer">
+              <span class="card-badge up"><span class="arrow-up"></span> 25%</span>
+              <span class="card-compare">compared to yesterday</span>
+            </div>
           </div>
         </div>
         <div class="card">
           <div class="card-title">Step Count</div>
           <div class="card-body">
-            <div class="card-value"><span id="stp" data-decimals="0" data-comma="true">0</span><span class="unit">steps</span></div>
-            <div class="card-footer"><span class="card-badge up"><span class="arrow-up"></span> 25%</span><span class="card-compare">compared to yesterday</span></div>
+            <div class="card-value">
+              <span class="val" id="stp">0</span>
+              <span class="unit">steps</span>
+            </div>
+            <div class="card-footer">
+              <span class="card-badge up"><span class="arrow-up"></span> 25%</span>
+              <span class="card-compare">compared to yesterday</span>
+            </div>
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Average Speed</div>
+          <div class="card-title">Duration</div>
           <div class="card-body">
-            <div class="card-value"><span data-count="4.21" data-decimals="2">0</span><span class="unit">km/h</span></div>
-            <div class="card-footer"><span class="card-badge down"><span class="arrow-down"></span> 20%</span><span class="card-compare">compared to yesterday</span></div>
+            <div class="card-value">
+              <span class="val" id="dur">0:00</span>
+            </div>
+            <div class="card-footer">
+              <span class="card-compare">session time</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- BOTTOM ROW: calories + chart -->
+      <!-- LAST SESSION -->
+      <div class="section-label" style="margin-top:20px;">Last session</div>
+      <div class="last-session-card">
+        <div class="last-session-grid">
+          <div class="ls-item">
+            <div class="ls-label">Steps</div>
+            <div class="ls-value" id="ls-steps">—</div>
+            <div class="ls-unit">total</div>
+          </div>
+          <div class="ls-item">
+            <div class="ls-label">Distance</div>
+            <div class="ls-value" id="ls-dist">—</div>
+            <div class="ls-unit">metres</div>
+          </div>
+          <div class="ls-item">
+            <div class="ls-label">Duration</div>
+            <div class="ls-value" id="ls-dur">—</div>
+            <div class="ls-unit">elapsed</div>
+          </div>
+          <div class="ls-item">
+            <div class="ls-label">Calories</div>
+            <div class="ls-value" id="ls-cal">—</div>
+            <div class="ls-unit">kcal</div>
+          </div>
+        </div>
+        <div class="ls-time" id="ls-time">No session recorded yet</div>
+      </div>
+
+      <!-- BOTTOM ROW -->
+      <div class="section-label" style="margin-top:20px;">Summary</div>
       <div class="bottom-row">
         <div class="card">
           <div class="card-title">Calories Burned</div>
           <div class="card-body">
-            <div class="card-value"><span data-count="668" data-decimals="0">0</span><span class="unit">kcal</span></div>
-            <div class="card-footer"><span class="card-badge up"><span class="arrow-up"></span> 18%</span><span class="card-compare">compared to yesterday</span></div>
+            <div class="card-value">
+              <span class="val" id="cal">0</span>
+              <span class="unit">kcal</span>
+            </div>
+            <div class="card-footer">
+              <span class="card-badge up"><span class="arrow-up"></span> 18%</span>
+              <span class="card-compare">compared to yesterday</span>
+            </div>
           </div>
         </div>
 
@@ -256,100 +333,144 @@
         <img src="dummy.png" alt="route map"/>
       </div>
 
-      <p style="text-align:center; font-size:11px; color:#aaa; padding:16px 0 8px; font-family:'Poppins',sans-serif; letter-spacing:0.3px;">© 2026 Monterro · Fathia Nugraha. All rights reserved.</p>
+      <p style="text-align:center; font-size:11px; color:#aaa; padding:16px 0 8px; font-family:'Poppins',sans-serif; letter-spacing:0.3px;">
+        © 2026 Monterro · Fathia Nugraha. All rights reserved.
+      </p>
 
     </div>
   </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <script>
-const { createClient } = supabase;
+  const { createClient } = supabase;
 
-const SUPABASE_URL  = "https://sudlejmejjlairgxdlzi.supabase.co";
-const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo";
-const CHANNEL_NAME  = "twatch-activity";
+  const SUPABASE_URL = "https://sudlejmejjlairgxdlzi.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo";
+  const CHANNEL_NAME = "twatch-activity";
 
-console.log("VERCEL BUILD CHECK 2026-03-17-C");
+  // ★ Change to Pi IP if raspberrypi.local doesn't resolve
+  const PI_URL = "http://raspberrypi.local:5000";
 
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log("dashboard v2026-03-17-E");
 
-// ── Count-up animation ────────────────────────────────────────────────────────
-function countUp(el) {
-  const target   = parseFloat(el.getAttribute("data-count"));
-  const decimals = parseInt(el.getAttribute("data-decimals")) || 0;
-  const useComma = el.getAttribute("data-comma") === "true";
-  const steps = 60;
-  const increment = target / steps;
-  let current = 0, step = 0;
-  const timer = setInterval(() => {
-    step++;
-    current += increment;
-    if (step >= steps) { current = target; clearInterval(timer); }
-    let display = current.toFixed(decimals);
-    if (useComma) display = Math.round(current).toLocaleString();
-    el.textContent = display;
-  }, 1200 / steps);
-}
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ── Update display ────────────────────────────────────────────────────────────
-function updateDisplay(payload) {
-  console.log("[live_update]", payload);
-  const stpEl  = document.getElementById("stp");
-  const distEl = document.getElementById("dist");
-  if (payload.steps    != null && stpEl)  stpEl.textContent  = Number(payload.steps).toLocaleString();
-  if (payload.distance != null && distEl) distEl.textContent = Number(payload.distance).toLocaleString();
-}
-
-function setWatchStatus(connected) {
-  const dot   = document.querySelector(".watch-dot");
-  const badge = document.querySelector(".watch-badge");
-  if (!dot || !badge) return;
-  dot.style.background   = connected ? "#fff"  : "#ff4757";
-  badge.style.background = connected ? "#111"  : "#333";
-}
-
-// ── Supabase subscription with auto-reconnect ─────────────────────────────────
-let activeChannel = null;
-
-function subscribe() {
-  // ★ Remove old channel before creating new one
-  if (activeChannel) {
-    sb.removeChannel(activeChannel);
-    activeChannel = null;
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function fmtDuration(s) {
+    const h   = Math.floor(s / 3600);
+    const m   = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+    return `${m}:${String(sec).padStart(2,"0")}`;
   }
 
-  activeChannel = sb.channel(CHANNEL_NAME)
+  function setWatchStatus(connected) {
+    const badge  = document.getElementById("watch-badge");
+    const status = document.getElementById("watch-status");
+    if (!badge || !status) return;
+    if (connected) {
+      badge.classList.remove("disconnected");
+      status.textContent = "Watch Connected";
+    } else {
+      badge.classList.add("disconnected");
+      status.textContent = "Watch Disconnected";
+    }
+  }
+
+  // ── Update live cards ─────────────────────────────────────────────────────────
+  function updateLive(payload) {
+    console.log("[live_update]", payload);
+    const steps    = payload.steps    ?? 0;
+    const distance = payload.distance ?? 0;
+    const duration = payload.duration ?? 0;
+    const calories = payload.calories ?? Math.round(steps * 0.04);
+
+    const stpEl  = document.getElementById("stp");
+    const distEl = document.getElementById("dist");
+    const durEl  = document.getElementById("dur");
+    const calEl  = document.getElementById("cal");
+
+    if (stpEl)  stpEl.textContent  = Number(steps).toLocaleString();
+    if (distEl) distEl.textContent = Number(distance).toLocaleString();
+    if (durEl)  durEl.textContent  = fmtDuration(duration);
+    if (calEl)  calEl.textContent  = calories;
+  }
+
+  // ── Update last session panel ─────────────────────────────────────────────────
+  function updateLastSession(data) {
+    console.log("[last session]", data);
+    const lsSteps = document.getElementById("ls-steps");
+    const lsDist  = document.getElementById("ls-dist");
+    const lsDur   = document.getElementById("ls-dur");
+    const lsCal   = document.getElementById("ls-cal");
+    const lsTime  = document.getElementById("ls-time");
+
+    if (lsSteps) lsSteps.textContent = Number(data.steps).toLocaleString();
+    if (lsDist)  lsDist.textContent  = Number(data.distance).toLocaleString();
+    if (lsDur)   lsDur.textContent   = fmtDuration(data.duration);
+    if (lsCal)   lsCal.textContent   = data.calories ?? "—";
+    if (lsTime && data.ended_at) {
+      const d = new Date(data.ended_at);
+      lsTime.textContent = `Ended at ${d.toLocaleString()}`;
+    }
+  }
+
+  // ── Fetch last session from Pi on page load ───────────────────────────────────
+  async function fetchLastSession() {
+    try {
+      const res = await fetch(`${PI_URL}/last-session`);
+      if (!res.ok) return;
+      const data = await res.json();
+      updateLastSession(data);
+    } catch (e) {
+      console.warn("[Pi] Could not fetch last session:", e.message);
+    }
+  }
+
+  // ── Supabase subscription ─────────────────────────────────────────────────────
+  let activeChannel = null;
+
+  function subscribe() {
+    if (activeChannel) {
+      sb.removeChannel(activeChannel);
+      activeChannel = null;
+    }
+
+    // ★ self: true — required to receive messages sent via Pi REST API
+    activeChannel = sb.channel(CHANNEL_NAME, {
+      config: {
+        broadcast: { self: true }
+      }
+    })
     .on("broadcast", { event: "live_update" }, ({ payload }) => {
-      updateDisplay(payload);
+      updateLive(payload);
+    })
+    .on("broadcast", { event: "session_end" }, ({ payload }) => {
+      updateLastSession(payload);
+      console.log("[session_end]", payload);
     })
     .on("broadcast", { event: "status" }, ({ payload }) => {
       setWatchStatus(payload.connected);
     })
-    .on("broadcast", { event: "session_end" }, ({ payload }) => {
-      console.log("[session_end]", payload);
-    })
     .subscribe((status) => {
       console.log("[Supabase]", status);
-      // ★ Reconnect on error
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.warn("[Supabase] Reconnecting...");
+        console.warn("[Supabase] Reconnecting in 3s...");
         setTimeout(subscribe, 3000);
       }
     });
-}
+  }
 
-// ★ Heartbeat — resubscribe every 25 seconds before Supabase silently drops
-setInterval(() => {
-  console.log("[Supabase] Heartbeat resubscribe");
-  subscribe();
-}, 25000);
+  // ★ Heartbeat — resubscribe every 25s to prevent silent WebSocket timeout
+  setInterval(() => {
+    console.log("[Supabase] Heartbeat");
+    subscribe();
+  }, 25000);
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-subscribe();
-document.querySelectorAll("[data-count]").forEach(el => countUp(el));
+  // ── Init ──────────────────────────────────────────────────────────────────────
+  fetchLastSession();  // load last session from Pi on page open
+  subscribe();         // start Supabase live subscription
 </script>
 
 </body>
 </html>
-
-
-
