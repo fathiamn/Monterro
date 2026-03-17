@@ -263,56 +263,77 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <script>
 const { createClient } = supabase;
-const sb = createClient(
-  "https://sudlejmejjlairgxdlzi.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo"
-);
+
+const SUPABASE_URL = "https://sudlejmejjlairgxdlzi.supabase.co";
+const SUPABASE_KEY = "YOUR_ANON_KEY_HERE";
+const CHANNEL_NAME = "twatch-activity";
+
+console.log("VERCEL BUILD CHECK 2026-03-17-B");
+
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── Count-up animation on page load ───────────────────────────────────────────
 function countUp(el) {
-  const target   = parseFloat(el.getAttribute('data-count'));
-  const decimals = parseInt(el.getAttribute('data-decimals')) || 0;
-  const useComma = el.getAttribute('data-comma') === 'true';
+  const target = parseFloat(el.getAttribute("data-count"));
+  const decimals = parseInt(el.getAttribute("data-decimals")) || 0;
+  const useComma = el.getAttribute("data-comma") === "true";
   const duration = 1200;
-  const steps    = 60;
+  const steps = 60;
   const increment = target / steps;
   let current = 0, step = 0;
+
   const timer = setInterval(() => {
     step++;
     current += increment;
-    if (step >= steps) { current = target; clearInterval(timer); }
+    if (step >= steps) {
+      current = target;
+      clearInterval(timer);
+    }
     let display = current.toFixed(decimals);
     if (useComma) display = Math.round(current).toLocaleString();
     el.textContent = display;
   }, duration / steps);
 }
 
-// ── Update display elements ───────────────────────────────────────────────────
+// ── Live update display ───────────────────────────────────────────────────────
 function updateDisplay(payload) {
-  console.log("[Supabase] live_update received:", payload);
+  console.log("[got live_update]", payload);
 
-  const stpEl  = document.getElementById("stp");
+  const stpEl = document.getElementById("stp");
   const distEl = document.getElementById("dist");
 
-  if (payload.steps != null && stpEl) {
+  if (!stpEl || !distEl) {
+    console.error("Missing DOM elements", {
+      stp: !!stpEl,
+      dist: !!distEl
+    });
+    return;
+  }
+
+  if (payload.steps != null) {
     stpEl.textContent = Number(payload.steps).toLocaleString();
   }
 
-  if (payload.distance != null && distEl) {
-    distEl.textContent = Number(payload.distance).toFixed(2);
+  if (payload.distance != null) {
+    // app.py sends distance in meters
+    distEl.textContent = Number(payload.distance).toLocaleString();
   }
 }
 
 // ── Supabase Realtime subscription ───────────────────────────────────────────
-sb.channel("twatch-activity")
+const channel = sb.channel(CHANNEL_NAME);
+
+channel
   .on("broadcast", { event: "live_update" }, ({ payload }) => {
+    console.log("[received broadcast: live_update]", payload);
     updateDisplay(payload);
   })
   .on("broadcast", { event: "status" }, ({ payload }) => {
-    console.log("[Supabase] status:", payload);
-    // ★ Update the watch dot based on connection status
+    console.log("[received broadcast: status]", payload);
+
     const dot = document.querySelector(".watch-dot");
     const badge = document.querySelector(".watch-badge");
+
     if (dot && badge) {
       if (payload.connected) {
         dot.style.background = "#fff";
@@ -323,12 +344,15 @@ sb.channel("twatch-activity")
       }
     }
   })
+  .on("broadcast", { event: "session_end" }, ({ payload }) => {
+    console.log("[received broadcast: session_end]", payload);
+  })
   .subscribe((status) => {
-    console.log("[Supabase] channel status:", status);
+    console.log("[Supabase] channel status:", status, "channel=", CHANNEL_NAME);
   });
 
 // ── Run count-up on page load ─────────────────────────────────────────────────
-document.querySelectorAll('[data-count]').forEach(el => countUp(el));
+document.querySelectorAll("[data-count]").forEach(el => countUp(el));
 </script>
 
 </body>
