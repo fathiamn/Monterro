@@ -300,28 +300,24 @@
           <div style="display:flex; flex:1; height:100%;">
             <div style="writing-mode:vertical-rl; transform:rotate(180deg); font-size:9px; font-weight:400; letter-spacing:1.5px; text-transform:uppercase; color:#111; padding: 16px 14px; white-space:nowrap; border-right:1px solid #c8c8c8; display:flex; align-items:center; justify-content:center; min-width:36px;">Distance Recap</div>
             <div style="flex:1; padding: 12px 14px 8px 10px; display:flex; align-items:center;">
-
-              <!-- ── Distance Recap graph — redrawn dynamically on each session_end ── -->
               <svg id="dist-graph" width="100%" height="110" viewBox="0 0 400 110" preserveAspectRatio="none">
-                <!-- grid lines — static, never change -->
+                <!-- static grid lines — never touched by JS -->
                 <line x1="30" y1="6"  x2="400" y2="6"  stroke="#f0f0f0" stroke-width="1"/>
                 <line x1="30" y1="28" x2="400" y2="28" stroke="#f0f0f0" stroke-width="1"/>
                 <line x1="30" y1="50" x2="400" y2="50" stroke="#f0f0f0" stroke-width="1"/>
                 <line x1="30" y1="72" x2="400" y2="72" stroke="#f0f0f0" stroke-width="1"/>
                 <line x1="30" y1="94" x2="400" y2="94" stroke="#f0f0f0" stroke-width="1"/>
-                <!-- y-axis labels — rewritten by JS -->
+                <!-- dynamic groups redrawn by redrawDistanceGraph() -->
                 <g id="graph-ylabels"></g>
-                <!-- polyline + dots + x-labels — rewritten by JS -->
+                <g id="graph-area"></g>
                 <g id="graph-line"></g>
                 <g id="graph-dots"></g>
                 <g id="graph-xlabels"></g>
-                <!-- empty state -->
                 <text id="graph-empty" x="215" y="55" font-size="9" fill="#ccc"
                       font-family="Poppins" text-anchor="middle">
                   No sessions recorded yet
                 </text>
               </svg>
-
             </div>
           </div>
         </div>
@@ -341,8 +337,9 @@
   const SUPABASE_URL = "https://sudlejmejjlairgxdlzi.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo";
   const CHANNEL_NAME = "twatch-activity";
+  const PI_BASE      = "http://raspberrypi.local:5000";   // adjust if using IP
 
-  console.log("dashboard v2026-03-17-F");
+  console.log("dashboard v2026-03-18-G");
 
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -405,127 +402,158 @@
       lsTime.textContent = `Ended at ${d.toLocaleString()}`;
     }
 
-    // ── Push to history and redraw graph ──────────────────────────────────────
-    sessionHistory.push({
-      distance: Number(data.distance) || 0,
-      label:    data.ended_at
-                  ? new Date(data.ended_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                  : `#${sessionHistory.length + 1}`
-    });
-    // Keep at most 10 sessions on the graph
-    if (sessionHistory.length > 10) sessionHistory.shift();
-    redrawDistanceGraph();
+    // If Pi sent the full history list in the broadcast, use it directly.
+    // This keeps the graph in sync without a separate fetch.
+    if (Array.isArray(data.history) && data.history.length > 0) {
+      redrawDistanceGraph(data.history);
+    }
   }
 
-  // ── Session history for the graph ─────────────────────────────────────────────
-  // Each entry: { distance: number (metres), label: string }
-  const sessionHistory = [];
+  // ── Graph ─────────────────────────────────────────────────────────────────────
+  // history = array of { distance, ended_at } oldest → newest (left → right)
 
-  // ── Graph constants ───────────────────────────────────────────────────────────
-  // SVG viewBox: 0 0 400 110
-  // Left pad: 30   Right edge: 398
-  // Top pad:   6   Bottom of plot: 94   (usable height = 88)
-  const G = {
-    LEFT: 30, RIGHT: 398,
-    TOP: 6,   BOTTOM: 94,
-    get W() { return this.RIGHT - this.LEFT; },   // 368
-    get H() { return this.BOTTOM - this.TOP; }    // 88
-  };
+  const G = { LEFT:30, RIGHT:398, TOP:6, BOTTOM:94 };
 
-  function svgEl(tag, attrs) {
+  function svgEl(tag, attrs, text) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (text !== undefined) el.textContent = text;
     return el;
   }
 
-  function redrawDistanceGraph() {
-    const emptyMsg  = document.getElementById("graph-empty");
-    const lineGroup = document.getElementById("graph-line");
-    const dotsGroup = document.getElementById("graph-dots");
-    const xlGroup   = document.getElementById("graph-xlabels");
-    const ylGroup   = document.getElementById("graph-ylabels");
+  function redrawDistanceGraph(history) {
+    const emptyMsg = document.getElementById("graph-empty");
+    const gArea    = document.getElementById("graph-area");
+    const gLine    = document.getElementById("graph-line");
+    const gDots    = document.getElementById("graph-dots");
+    const gXlbl    = document.getElementById("graph-xlabels");
+    const gYlbl    = document.getElementById("graph-ylabels");
 
-    // Clear dynamic groups
-    [lineGroup, dotsGroup, xlGroup, ylGroup].forEach(g => { while (g.firstChild) g.removeChild(g.firstChild); });
+    [gArea, gLine, gDots, gXlbl, gYlbl].forEach(g => {
+      while (g.firstChild) g.removeChild(g.firstChild);
+    });
 
-    if (sessionHistory.length === 0) {
+    if (!history || history.length === 0) {
       if (emptyMsg) emptyMsg.style.display = "";
       return;
     }
     if (emptyMsg) emptyMsg.style.display = "none";
 
-    const n       = sessionHistory.length;
-    const maxDist = Math.max(...sessionHistory.map(s => s.distance), 1);
+    const n       = history.length;
+    const maxDist = Math.max(...history.map(s => Number(s.distance) || 0), 1);
 
-    // Round up maxDist to a nice ceiling for the y-axis
-    const magnitude = Math.pow(10, Math.floor(Math.log10(maxDist)));
-    const yMax      = Math.ceil(maxDist / magnitude) * magnitude;
+    // Round y-axis ceiling to a clean value
+    const mag  = Math.pow(10, Math.floor(Math.log10(maxDist)));
+    const yMax = Math.ceil(maxDist / mag) * mag;
 
-    // Y-axis labels (5 grid lines already drawn statically at y=6,28,50,72,94)
-    const ySteps = [yMax, yMax*0.75, yMax*0.5, yMax*0.25, 0];
-    const yPixels = [6, 28, 50, 72, 94];
-    ySteps.forEach((val, i) => {
+    const W = G.RIGHT - G.LEFT;   // 368
+    const H = G.BOTTOM - G.TOP;   // 88
+
+    // Y-axis labels at the five existing grid lines
+    [yMax, yMax*0.75, yMax*0.5, yMax*0.25, 0].forEach((val, i) => {
       const label = val >= 1000
         ? (val / 1000).toFixed(val % 1000 === 0 ? 0 : 1) + "k"
         : String(Math.round(val));
-      ylGroup.appendChild(svgEl("text", {
-        x: "25", y: String(yPixels[i] + 3),
-        "font-size": "8", fill: "#ccc",
-        "font-family": "Poppins", "text-anchor": "end"
-      })).textContent = label;
+      gYlbl.appendChild(svgEl("text",
+        { x:"25", y: String([6,28,50,72,94][i] + 3),
+          "font-size":"8", fill:"#ccc",
+          "font-family":"Poppins", "text-anchor":"end" },
+        label
+      ));
     });
 
-    // X positions: spread sessions evenly between LEFT+25 and RIGHT-10
+    // X positions spread evenly
     const xStart = G.LEFT + 25;
     const xEnd   = G.RIGHT - 10;
     const xStep  = n === 1 ? 0 : (xEnd - xStart) / (n - 1);
+    const toY    = dist => G.BOTTOM - ((Number(dist) / yMax) * H);
 
-    function toY(dist) {
-      return G.BOTTOM - ((dist / yMax) * G.H);
-    }
+    const pts = history.map((s, i) => ({
+      x:    Math.round(n === 1 ? (xStart + xEnd) / 2 : xStart + i * xStep),
+      y:    Math.round(toY(s.distance)),
+      dist: Number(s.distance) || 0,
+      label: s.ended_at
+        ? new Date(s.ended_at).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
+        : `#${i + 1}`
+    }));
 
-    // Build polyline points
-    const points = sessionHistory.map((s, i) => {
-      const x = n === 1 ? (xStart + xEnd) / 2 : xStart + i * xStep;
-      const y = toY(s.distance);
-      return { x: Math.round(x), y: Math.round(y), label: s.label, dist: s.distance };
-    });
+    // Filled area under line
+    const areaPath = [
+      `M ${pts[0].x},${G.BOTTOM}`,
+      ...pts.map(p => `L ${p.x},${p.y}`),
+      `L ${pts[pts.length-1].x},${G.BOTTOM}`,
+      "Z"
+    ].join(" ");
+    gArea.appendChild(svgEl("path", {
+      d: areaPath,
+      fill: "#111", "fill-opacity": "0.04"
+    }));
 
-    // Polyline
-    const ptStr = points.map(p => `${p.x},${p.y}`).join(" ");
-    lineGroup.appendChild(svgEl("polyline", {
-      points: ptStr,
+    // Line
+    gLine.appendChild(svgEl("polyline", {
+      points: pts.map(p => `${p.x},${p.y}`).join(" "),
       fill: "none", stroke: "#111", "stroke-width": "1.5",
       "stroke-linejoin": "round", "stroke-linecap": "round"
     }));
 
-    // Dots + x-labels
-    points.forEach(p => {
-      // Filled dot
-      dotsGroup.appendChild(svgEl("circle", {
+    // Dots, value labels, x labels
+    pts.forEach(p => {
+      // dot
+      gDots.appendChild(svgEl("circle", {
         cx: String(p.x), cy: String(p.y), r: "3",
         fill: "#fff", stroke: "#111", "stroke-width": "1.5"
       }));
 
-      // Distance value above dot (only if enough vertical space)
+      // distance above dot (skip if too close to top)
       if (p.y > G.TOP + 14) {
-        const distLabel = p.dist >= 1000
+        const dStr = p.dist >= 1000
           ? (p.dist / 1000).toFixed(1) + "k"
           : String(Math.round(p.dist));
-        dotsGroup.appendChild(svgEl("text", {
-          x: String(p.x), y: String(p.y - 6),
-          "font-size": "7", fill: "#888",
-          "font-family": "Poppins", "text-anchor": "middle"
-        })).textContent = distLabel + "m";
+        gDots.appendChild(svgEl("text",
+          { x: String(p.x), y: String(p.y - 6),
+            "font-size":"7", fill:"#888",
+            "font-family":"Poppins", "text-anchor":"middle" },
+          dStr + "m"
+        ));
       }
 
-      // X-axis label (time or session number)
-      xlGroup.appendChild(svgEl("text", {
-        x: String(p.x), y: "108",
-        "font-size": "7", fill: "#bbb",
-        "font-family": "Poppins", "text-anchor": "middle"
-      })).textContent = p.label;
+      // x label (time)
+      gXlbl.appendChild(svgEl("text",
+        { x: String(p.x), y:"108",
+          "font-size":"7", fill:"#bbb",
+          "font-family":"Poppins", "text-anchor":"middle" },
+        p.label
+      ));
     });
+  }
+
+  // ── On page load: fetch persisted history from Pi ────────────────────────────
+  // Populates the graph immediately even after a browser refresh.
+  async function loadHistoryFromPi() {
+    try {
+      const res = await fetch(`${PI_BASE}/history`, { signal: AbortSignal.timeout(4000) });
+      if (!res.ok) return;
+      const history = await res.json();
+      if (Array.isArray(history) && history.length > 0) {
+        console.log(`[Pi] Loaded ${history.length} session(s) from history`);
+        redrawDistanceGraph(history);
+      }
+    } catch (e) {
+      // Pi unreachable on load (normal when dashboard hosted remotely)
+      console.warn("[Pi] History fetch failed (Pi may be offline):", e.message);
+    }
+  }
+
+  // ── Also restore last session panel from Pi on load ───────────────────────────
+  async function loadLastSessionFromPi() {
+    try {
+      const res = await fetch(`${PI_BASE}/last-session`, { signal: AbortSignal.timeout(4000) });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && !data.error) updateLastSession(data);
+    } catch (e) {
+      console.warn("[Pi] Last-session fetch failed:", e.message);
+    }
   }
 
   // ── Supabase subscription ──────────────────────────────────────────────────────
@@ -537,21 +565,12 @@
       activeChannel = null;
     }
 
-    // ★ self: true — required to receive messages sent via Pi REST API
     activeChannel = sb.channel(CHANNEL_NAME, {
-      config: {
-        broadcast: { self: true }
-      }
+      config: { broadcast: { self: true } }
     })
-    .on("broadcast", { event: "live_update" }, ({ payload }) => {
-      updateLive(payload);
-    })
-    .on("broadcast", { event: "session_end" }, ({ payload }) => {
-      updateLastSession(payload);
-    })
-    .on("broadcast", { event: "status" }, ({ payload }) => {
-      setWatchStatus(payload.connected);
-    })
+    .on("broadcast", { event: "live_update" },  ({ payload }) => updateLive(payload))
+    .on("broadcast", { event: "session_end" },  ({ payload }) => updateLastSession(payload))
+    .on("broadcast", { event: "status" },        ({ payload }) => setWatchStatus(payload.connected))
     .subscribe((status) => {
       console.log("[Supabase]", status);
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
@@ -561,7 +580,6 @@
     });
   }
 
-  // ★ Heartbeat — resubscribe every 25s to prevent silent WebSocket timeout
   setInterval(() => {
     console.log("[Supabase] Heartbeat");
     subscribe();
@@ -569,6 +587,8 @@
 
   // ── Init ───────────────────────────────────────────────────────────────────────
   subscribe();
+  loadHistoryFromPi();
+  loadLastSessionFromPi();
 </script>
 
 </body>
