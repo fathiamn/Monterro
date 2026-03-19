@@ -310,33 +310,33 @@
   const { createClient } = supabase;
 
   const SUPABASE_URL = "https://sudlejmejjlairgxdlzi.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo";
+  const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
   const CHANNEL_NAME = "twatch-activity";
-
-  // ── Pi base URL ──────────────────────────────────────────────────────────────
-  // If you're on the same local network as the Pi, set this to its local URL.
-  // If viewing from outside (e.g. Vercel), Pi direct-fetch won't work —
-  // history comes via Supabase broadcast instead (works from anywhere).
-  // To use a public tunnel (ngrok / cloudflared), replace with the tunnel URL.
   const PI_BASE = "http://raspberrypi.local:5000";
 
-  console.log("dashboard v2026-03-18-H");
+  console.log("dashboard v2026-03-19-livefix");
 
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
+  let activeChannel = null;
+  let channelState = "CLOSED";
+  let reconnectTimer = null;
+  let heartbeatCount = 0;
+
   function fmtDuration(s) {
-    const h   = Math.floor(s / 3600);
-    const m   = Math.floor((s % 3600) / 60);
+    s = Number(s || 0);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
-    if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
-    return `${m}:${String(sec).padStart(2,"0")}`;
+    if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    return `${m}:${String(sec).padStart(2, "0")}`;
   }
 
   function setWatchStatus(connected) {
-    const badge  = document.getElementById("watch-badge");
+    const badge = document.getElementById("watch-badge");
     const status = document.getElementById("watch-status");
     if (!badge || !status) return;
+
     if (connected) {
       badge.classList.remove("disconnected");
       status.textContent = "Watch Connected";
@@ -346,49 +346,49 @@
     }
   }
 
-  // ── Update live cards ──────────────────────────────────────────────────────────
   function updateLive(payload) {
-    console.log("[live_update]", payload);
-    const steps    = payload.steps    ?? 0;
-    const distance = payload.distance ?? 0;
-    const duration = payload.duration ?? 0;
-    const calories = payload.calories ?? Math.round(steps * 0.04);
-    const stpEl  = document.getElementById("stp");
+    console.log("[updateLive] payload =", payload);
+
+    const steps = Number(payload?.steps ?? 0);
+    const distance = Number(payload?.distance ?? 0);
+    const duration = Number(payload?.duration ?? 0);
+    const calories = Number(payload?.calories ?? Math.round(steps * 0.04));
+
+    const stpEl = document.getElementById("stp");
     const distEl = document.getElementById("dist");
-    const durEl  = document.getElementById("dur");
-    const calEl  = document.getElementById("cal");
-    if (stpEl)  stpEl.textContent  = Number(steps).toLocaleString();
-    if (distEl) distEl.textContent = Number(distance).toLocaleString();
-    if (durEl)  durEl.textContent  = fmtDuration(duration);
-    if (calEl)  calEl.textContent  = calories;
+    const durEl = document.getElementById("dur");
+    const calEl = document.getElementById("cal");
+
+    if (stpEl) stpEl.textContent = steps.toLocaleString();
+    if (distEl) distEl.textContent = distance.toLocaleString();
+    if (durEl) durEl.textContent = fmtDuration(duration);
+    if (calEl) calEl.textContent = calories.toLocaleString();
   }
 
-  // ── Update last session panel ──────────────────────────────────────────────────
   function updateLastSession(data) {
-    console.log("[session_end]", data);
-    const lsSteps = document.getElementById("ls-steps");
-    const lsDist  = document.getElementById("ls-dist");
-    const lsDur   = document.getElementById("ls-dur");
-    const lsCal   = document.getElementById("ls-cal");
-    const lsTime  = document.getElementById("ls-time");
+    console.log("[updateLastSession] data =", data);
 
-    if (lsSteps) lsSteps.textContent = Number(data.steps).toLocaleString();
-    if (lsDist)  lsDist.textContent  = Number(data.distance).toLocaleString();
-    if (lsDur)   lsDur.textContent   = fmtDuration(data.duration);
-    if (lsCal)   lsCal.textContent   = data.calories ?? "—";
-    if (lsTime && data.ended_at) {
+    const lsSteps = document.getElementById("ls-steps");
+    const lsDist = document.getElementById("ls-dist");
+    const lsDur = document.getElementById("ls-dur");
+    const lsCal = document.getElementById("ls-cal");
+    const lsTime = document.getElementById("ls-time");
+
+    if (lsSteps) lsSteps.textContent = Number(data?.steps ?? 0).toLocaleString();
+    if (lsDist) lsDist.textContent = Number(data?.distance ?? 0).toLocaleString();
+    if (lsDur) lsDur.textContent = fmtDuration(data?.duration ?? 0);
+    if (lsCal) lsCal.textContent = (data?.calories ?? "—");
+
+    if (lsTime && data?.ended_at) {
       lsTime.textContent = `Ended at ${new Date(data.ended_at).toLocaleString()}`;
     }
 
-    // Pi attaches full history to every session_end broadcast.
-    // Works even when dashboard is on Vercel — no direct Pi fetch needed.
-    if (Array.isArray(data.history) && data.history.length > 0) {
+    if (Array.isArray(data?.history) && data.history.length > 0) {
       redrawDistanceGraph(data.history);
     }
   }
 
-  // ── Graph ─────────────────────────────────────────────────────────────────────
-  const G = { LEFT:30, RIGHT:398, TOP:6, BOTTOM:94 };
+  const G = { LEFT: 30, RIGHT: 398, TOP: 6, BOTTOM: 94 };
 
   function svgEl(tag, attrs, text) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -399,11 +399,11 @@
 
   function redrawDistanceGraph(history) {
     const emptyMsg = document.getElementById("graph-empty");
-    const gArea    = document.getElementById("graph-area");
-    const gLine    = document.getElementById("graph-line");
-    const gDots    = document.getElementById("graph-dots");
-    const gXlbl    = document.getElementById("graph-xlabels");
-    const gYlbl    = document.getElementById("graph-ylabels");
+    const gArea = document.getElementById("graph-area");
+    const gLine = document.getElementById("graph-line");
+    const gDots = document.getElementById("graph-dots");
+    const gXlbl = document.getElementById("graph-xlabels");
+    const gYlbl = document.getElementById("graph-ylabels");
 
     [gArea, gLine, gDots, gXlbl, gYlbl].forEach(g => {
       while (g.firstChild) g.removeChild(g.firstChild);
@@ -413,94 +413,104 @@
       if (emptyMsg) emptyMsg.style.display = "";
       return;
     }
+
     if (emptyMsg) emptyMsg.style.display = "none";
 
-    const n       = history.length;
+    const n = history.length;
     const maxDist = Math.max(...history.map(s => Number(s.distance) || 0), 1);
-    const mag     = Math.pow(10, Math.floor(Math.log10(maxDist)));
-    const yMax    = Math.ceil(maxDist / mag) * mag;
-    const W       = G.RIGHT - G.LEFT;
-    const H       = G.BOTTOM - G.TOP;
+    const mag = Math.pow(10, Math.floor(Math.log10(maxDist)));
+    const yMax = Math.ceil(maxDist / mag) * mag;
+    const H = G.BOTTOM - G.TOP;
 
-    // Y-axis labels
-    [yMax, yMax*0.75, yMax*0.5, yMax*0.25, 0].forEach((val, i) => {
+    [yMax, yMax * 0.75, yMax * 0.5, yMax * 0.25, 0].forEach((val, i) => {
       const label = val >= 1000
         ? (val / 1000).toFixed(val % 1000 === 0 ? 0 : 1) + "k"
         : String(Math.round(val));
-      gYlbl.appendChild(svgEl("text",
-        { x:"25", y:String([6,28,50,72,94][i]+3),
-          "font-size":"8", fill:"#ccc",
-          "font-family":"Poppins", "text-anchor":"end" },
-        label
-      ));
+
+      gYlbl.appendChild(svgEl("text", {
+        x: "25",
+        y: String([6, 28, 50, 72, 94][i] + 3),
+        "font-size": "8",
+        fill: "#ccc",
+        "font-family": "Poppins",
+        "text-anchor": "end"
+      }, label));
     });
 
     const xStart = G.LEFT + 25;
-    const xEnd   = G.RIGHT - 10;
-    const xStep  = n === 1 ? 0 : (xEnd - xStart) / (n - 1);
-    const toY    = dist => G.BOTTOM - ((Number(dist) / yMax) * H);
+    const xEnd = G.RIGHT - 10;
+    const xStep = n === 1 ? 0 : (xEnd - xStart) / (n - 1);
+    const toY = dist => G.BOTTOM - ((Number(dist) / yMax) * H);
 
     const pts = history.map((s, i) => ({
-      x:     Math.round(n === 1 ? (xStart + xEnd) / 2 : xStart + i * xStep),
-      y:     Math.round(toY(s.distance)),
-      dist:  Number(s.distance) || 0,
+      x: Math.round(n === 1 ? (xStart + xEnd) / 2 : xStart + i * xStep),
+      y: Math.round(toY(s.distance)),
+      dist: Number(s.distance) || 0,
       label: s.ended_at
-        ? new Date(s.ended_at).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
+        ? new Date(s.ended_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : `#${i + 1}`
     }));
 
-    // Filled area
     const areaPath = [
       `M ${pts[0].x},${G.BOTTOM}`,
       ...pts.map(p => `L ${p.x},${p.y}`),
-      `L ${pts[pts.length-1].x},${G.BOTTOM}`, "Z"
+      `L ${pts[pts.length - 1].x},${G.BOTTOM}`,
+      "Z"
     ].join(" ");
-    gArea.appendChild(svgEl("path", { d: areaPath, fill:"#111", "fill-opacity":"0.04" }));
 
-    // Line
+    gArea.appendChild(svgEl("path", {
+      d: areaPath,
+      fill: "#111",
+      "fill-opacity": "0.04"
+    }));
+
     gLine.appendChild(svgEl("polyline", {
       points: pts.map(p => `${p.x},${p.y}`).join(" "),
-      fill:"none", stroke:"#111", "stroke-width":"1.5",
-      "stroke-linejoin":"round", "stroke-linecap":"round"
+      fill: "none",
+      stroke: "#111",
+      "stroke-width": "1.5",
+      "stroke-linejoin": "round",
+      "stroke-linecap": "round"
     }));
 
     pts.forEach(p => {
-      // dot
       gDots.appendChild(svgEl("circle", {
-        cx:String(p.x), cy:String(p.y), r:"3",
-        fill:"#fff", stroke:"#111", "stroke-width":"1.5"
+        cx: String(p.x),
+        cy: String(p.y),
+        r: "3",
+        fill: "#fff",
+        stroke: "#111",
+        "stroke-width": "1.5"
       }));
-      // distance label above dot
+
       if (p.y > G.TOP + 14) {
-        const dStr = p.dist >= 1000
-          ? (p.dist/1000).toFixed(1)+"k" : String(Math.round(p.dist));
-        gDots.appendChild(svgEl("text",
-          { x:String(p.x), y:String(p.y-6),
-            "font-size":"7", fill:"#888",
-            "font-family":"Poppins", "text-anchor":"middle" },
-          dStr+"m"
-        ));
+        const dStr = p.dist >= 1000 ? (p.dist / 1000).toFixed(1) + "k" : String(Math.round(p.dist));
+        gDots.appendChild(svgEl("text", {
+          x: String(p.x),
+          y: String(p.y - 6),
+          "font-size": "7",
+          fill: "#888",
+          "font-family": "Poppins",
+          "text-anchor": "middle"
+        }, dStr + "m"));
       }
-      // x label
-      gXlbl.appendChild(svgEl("text",
-        { x:String(p.x), y:"108",
-          "font-size":"7", fill:"#bbb",
-          "font-family":"Poppins", "text-anchor":"middle" },
-        p.label
-      ));
+
+      gXlbl.appendChild(svgEl("text", {
+        x: String(p.x),
+        y: "108",
+        "font-size": "7",
+        fill: "#bbb",
+        "font-family": "Poppins",
+        "text-anchor": "middle"
+      }, p.label));
     });
   }
 
-  // ── On page load: try to fetch history from Pi ────────────────────────────────
-  // This ONLY works if:
-  //   a) You're on the same local network as the Pi, AND
-  //   b) The Pi has CORS enabled (flask-cors, which app.py now has)
-  // If the Pi is unreachable (e.g. you're on Vercel from outside), this fails
-  // silently — history will repopulate from the next session_end broadcast.
   async function loadHistoryFromPi() {
     try {
-      const res = await fetch(`${PI_BASE}/history`,
-        { signal: AbortSignal.timeout(3000) });
+      const res = await fetch(`${PI_BASE}/history`, {
+        signal: AbortSignal.timeout(3000)
+      });
       if (!res.ok) return;
       const history = await res.json();
       if (Array.isArray(history) && history.length > 0) {
@@ -508,14 +518,15 @@
         redrawDistanceGraph(history);
       }
     } catch (e) {
-      console.warn("[Pi] History fetch skipped (Pi unreachable or CORS):", e.message);
+      console.warn("[Pi] History fetch skipped:", e.message);
     }
   }
 
   async function loadLastSessionFromPi() {
     try {
-      const res = await fetch(`${PI_BASE}/last-session`,
-        { signal: AbortSignal.timeout(3000) });
+      const res = await fetch(`${PI_BASE}/last-session`, {
+        signal: AbortSignal.timeout(3000)
+      });
       if (!res.ok) return;
       const data = await res.json();
       if (data && !data.error) updateLastSession(data);
@@ -524,34 +535,92 @@
     }
   }
 
-  // ── Supabase subscription ──────────────────────────────────────────────────────
-  let activeChannel = null;
-
-  function subscribe() {
-    if (activeChannel) { sb.removeChannel(activeChannel); activeChannel = null; }
-
-    activeChannel = sb.channel(CHANNEL_NAME, {
-      config: { broadcast: { self: true } }
-    })
-    .on("broadcast", { event: "live_update" },  ({ payload }) => updateLive(payload))
-    .on("broadcast", { event: "session_end" },  ({ payload }) => updateLastSession(payload))
-    .on("broadcast", { event: "status" },        ({ payload }) => setWatchStatus(payload.connected))
-    .subscribe((status) => {
-      console.log("[Supabase]", status);
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.warn("[Supabase] Reconnecting in 3s...");
-        setTimeout(subscribe, 3000);
-      }
-    });
+  function clearReconnectTimer() {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
   }
 
-  setInterval(() => { console.log("[Supabase] Heartbeat"); subscribe(); }, 25000);
+  function scheduleReconnect(delay = 3000) {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      console.warn("[Supabase] Reconnecting...");
+      subscribe();
+    }, delay);
+  }
 
-  // ── Init ───────────────────────────────────────────────────────────────────────
+  function subscribe() {
+    if (activeChannel && (channelState === "SUBSCRIBED" || channelState === "JOINING")) {
+      console.log("[Supabase] subscribe skipped, current state =", channelState);
+      return;
+    }
+
+    if (activeChannel) {
+      try {
+        sb.removeChannel(activeChannel);
+      } catch (e) {
+        console.warn("[Supabase] removeChannel error:", e.message);
+      }
+      activeChannel = null;
+    }
+
+    channelState = "JOINING";
+    console.log("[Supabase] Creating channel", CHANNEL_NAME);
+
+    activeChannel = sb
+      .channel(CHANNEL_NAME, {
+        config: { broadcast: { self: true } }
+      })
+      .on("broadcast", { event: "live_update" }, ({ payload }) => {
+        console.log("[recv] live_update", payload);
+        updateLive(payload);
+      })
+      .on("broadcast", { event: "session_end" }, ({ payload }) => {
+        console.log("[recv] session_end", payload);
+        updateLastSession(payload);
+      })
+      .on("broadcast", { event: "status" }, ({ payload }) => {
+        console.log("[recv] status", payload);
+        setWatchStatus(!!payload?.connected);
+      })
+      .subscribe((status) => {
+        console.log("[Supabase status]", status);
+        channelState = status;
+
+        if (status === "SUBSCRIBED") {
+          clearReconnectTimer();
+        }
+
+        if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          scheduleReconnect(3000);
+        }
+      });
+  }
+
+  setInterval(() => {
+    heartbeatCount += 1;
+    console.log(`[Supabase] Heartbeat #${heartbeatCount} | state=${channelState}`);
+
+    if (
+      !activeChannel ||
+      channelState === "CHANNEL_ERROR" ||
+      channelState === "TIMED_OUT" ||
+      channelState === "CLOSED"
+    ) {
+      console.warn("[Supabase] Heartbeat found unhealthy channel");
+      subscribe();
+    }
+  }, 25000);
+
   subscribe();
   loadHistoryFromPi();
   loadLastSessionFromPi();
 </script>
-
 </body>
 </html>
