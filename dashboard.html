@@ -440,34 +440,43 @@
   // /current returns live state + last session + history in one request.
   // If a hike is already in progress, the live cards populate immediately
   // without waiting for the next 5 s watch tick.
-  async function loadFromPi() {
+async function loadFromPi() {
     try {
-      const res = await fetch(PI_BASE + "/current", {
-        signal: AbortSignal.timeout(4000)
-      });
-      if (!res.ok) { console.warn("[Pi] /current returned", res.status); return; }
-      const data = await res.json();
-      console.log("[Pi] /current →", data);
+        // Query Supabase DB directly — avoids mixed content block
+        // (Vercel is HTTPS, Pi is HTTP, browser blocks direct Pi fetch)
 
-      // Populate live cards if a session is in progress
-      if (data.live?.session_active) {
-        updateLive(data.live);
-      }
+        // Latest live tick
+        const { data: snap } = await sb
+            .from('live_snapshot')
+            .select('steps, distance, duration, calories, updated_at')
+            .eq('id', 1)
+            .single();
 
-      // Populate last-session card
-      if (data.last_session && !data.last_session.error) {
-        updateLastSession(data.last_session);
-      }
+        if (snap) {
+            const age = (Date.now() - new Date(snap.updated_at)) / 1000;
+            if (age < 30) {
+                updateLive({ ...snap, session_active: true });
+            }
+        }
 
-      // Populate history graph (Pi sends newest-first; graph needs oldest-first)
-      if (Array.isArray(data.history) && data.history.length > 0) {
-        redrawDistanceGraph([...data.history].reverse());
-      }
+        // Last session + history
+        const { data: sessions } = await sb
+            .from('session_history')
+            .select('steps, distance, duration, calories, ended_at')
+            .order('id', { ascending: false })
+            .limit(10);
+
+        if (sessions && sessions.length > 0) {
+            updateLastSession({
+                ...sessions[0],
+                history: sessions
+            });
+        }
 
     } catch (e) {
-      console.warn("[Pi] /current fetch skipped:", e.message);
+        console.warn("[loadFromPi] skipped:", e.message);
     }
-  }
+}
 
   // ── Supabase channel ───────────────────────────────────────────────────────
   function clearReconnectTimer() {
