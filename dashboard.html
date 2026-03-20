@@ -382,9 +382,8 @@
     if (lsTime && data?.ended_at) {
       lsTime.textContent = `Ended at ${new Date(data.ended_at).toLocaleString()}`;
     }
-
-    if (Array.isArray(data?.history) && data.history.length > 0) {
-      redrawDistanceGraph(data.history);
+      if (Array.isArray(data?.history) && data.history.length > 0) {
+        redrawDistanceGraph([...data.history].reverse());
     }
   }
 
@@ -514,8 +513,7 @@
       if (!res.ok) return;
       const history = await res.json();
       if (Array.isArray(history) && history.length > 0) {
-        console.log(`[Pi] Loaded ${history.length} session(s) from history`);
-        redrawDistanceGraph(history);
+        redrawDistanceGraph([...history].reverse());
       }
     } catch (e) {
       console.warn("[Pi] History fetch skipped:", e.message);
@@ -569,10 +567,8 @@
     channelState = "JOINING";
     console.log("[Supabase] Creating channel", CHANNEL_NAME);
 
-    activeChannel = sb
-      .channel(CHANNEL_NAME, {
-        config: { broadcast: { self: true } }
-      })
+    activeChannel = sb.channel(CHANNEL_NAME)
+      
       .on("broadcast", { event: "live_update" }, ({ payload }) => {
         console.log("[recv] live_update", payload);
         updateLive(payload);
