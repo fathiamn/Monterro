@@ -326,7 +326,8 @@
     document.getElementById("dist").textContent = distance.toLocaleString();
     document.getElementById("dur").textContent  = fmtDuration(duration);
     document.getElementById("cal").textContent  = calories.toLocaleString();
-  }
+    setWatchStatus(true);   // ← ADD THIS LINE
+}
 
   function updateLastSession(data) {
     console.log("[recv] session_end / last-session", data);
@@ -531,7 +532,9 @@
   }, 25000);
 
   // ── Boot ───────────────────────────────────────────────────────────────────
-  subscribe();
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  loadFromPi();   // populate cards immediately from MySQL via /current
+  subscribe();    // then open Supabase channel for real-time updates
 
 </script>
 </body>
