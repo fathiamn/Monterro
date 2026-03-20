@@ -277,14 +277,10 @@
 <script>
   const { createClient } = supabase;
 
-  const SUPABASE_URL = "https://sudlejmejjlairgxdlzi.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo";
+  const SUPABASE_URL  = "https://sudlejmejjlairgxdlzi.supabase.co";
+  const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1ZGxlam1lampsYWlyZ3hkbHppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1Nzc5OTIsImV4cCI6MjA4OTE1Mzk5Mn0.NRQy1vGT3LnbO1oo_yDoeVjOxz4xL9ErscJWNT1bAQo";
   const CHANNEL_NAME  = "twatch-activity";
-  const PI_BASE       = "http://raspberrypi.local/monterro";
 
-  console.log("dashboard v2026-03-20");
-
-  // ── Supabase client ────────────────────────────────────────────────────────
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let activeChannel  = null;
@@ -317,7 +313,6 @@
 
   // ── DOM updaters ───────────────────────────────────────────────────────────
   function updateLive(payload) {
-    console.log("[recv] live_update", payload);
     const steps    = Number(payload?.steps    ?? 0);
     const distance = Number(payload?.distance ?? 0);
     const duration = Number(payload?.duration ?? 0);
@@ -326,11 +321,14 @@
     document.getElementById("dist").textContent = distance.toLocaleString();
     document.getElementById("dur").textContent  = fmtDuration(duration);
     document.getElementById("cal").textContent  = calories.toLocaleString();
-    setWatchStatus(true);   // ← ADD THIS LINE
-}
+    // Mark connected only if data is fresh (within 30 s of now)
+    const age = payload?.updated_at
+      ? (Date.now() - new Date(payload.updated_at)) / 1000
+      : 0;
+    setWatchStatus(age < 30);
+  }
 
   function updateLastSession(data) {
-    console.log("[recv] session_end / last-session", data);
     document.getElementById("ls-steps").textContent = Number(data?.steps    ?? 0).toLocaleString();
     document.getElementById("ls-dist").textContent  = Number(data?.distance ?? 0).toLocaleString();
     document.getElementById("ls-dur").textContent   = fmtDuration(data?.duration ?? 0);
@@ -339,7 +337,6 @@
       document.getElementById("ls-time").textContent =
         "Ended at " + new Date(data.ended_at).toLocaleString();
     }
-    // history from Pi is newest-first; graph needs oldest-first (left→right)
     if (Array.isArray(data?.history) && data.history.length > 0) {
       redrawDistanceGraph([...data.history].reverse());
     }
@@ -361,18 +358,17 @@
       const g = document.getElementById(id);
       while (g.firstChild) g.removeChild(g.firstChild);
     });
-
     if (!history || history.length === 0) {
       if (emptyMsg) emptyMsg.style.display = "";
       return;
     }
     if (emptyMsg) emptyMsg.style.display = "none";
 
-    const gArea  = document.getElementById("graph-area");
-    const gLine  = document.getElementById("graph-line");
-    const gDots  = document.getElementById("graph-dots");
-    const gXlbl  = document.getElementById("graph-xlabels");
-    const gYlbl  = document.getElementById("graph-ylabels");
+    const gArea = document.getElementById("graph-area");
+    const gLine = document.getElementById("graph-line");
+    const gDots = document.getElementById("graph-dots");
+    const gXlbl = document.getElementById("graph-xlabels");
+    const gYlbl = document.getElementById("graph-ylabels");
 
     const n       = history.length;
     const maxDist = Math.max(...history.map(s => Number(s.distance) || 0), 1);
@@ -410,13 +406,11 @@
          "L " + pts[pts.length-1].x + "," + G.BOTTOM + " Z",
       fill:"#111", "fill-opacity":"0.04"
     }));
-
     gLine.appendChild(svgEl("polyline", {
       points: pts.map(p => p.x+","+p.y).join(" "),
       fill:"none", stroke:"#111", "stroke-width":"1.5",
       "stroke-linejoin":"round", "stroke-linecap":"round"
     }));
-
     pts.forEach(p => {
       gDots.appendChild(svgEl("circle", {
         cx:String(p.x), cy:String(p.y), r:"3",
@@ -436,49 +430,42 @@
     });
   }
 
-  // ── Pi REST — single /current call on page load ──────────────────────────
-  // /current returns live state + last session + history in one request.
-  // If a hike is already in progress, the live cards populate immediately
-  // without waiting for the next 5 s watch tick.
-async function loadFromPi() {
+  // ── Page-load hydration — reads from Supabase DB ───────────────────────────
+  // Direct Pi fetch is blocked by mixed content (Vercel=HTTPS, Pi=HTTP).
+  // PHP writes every tick to Supabase tables, so we read from there instead.
+  async function loadFromPi() {
     try {
-        // Query Supabase DB directly — avoids mixed content block
-        // (Vercel is HTTPS, Pi is HTTP, browser blocks direct Pi fetch)
+      // ── Live snapshot ──────────────────────────────────────────────────────
+      // Always populate live cards from DB on load — no age gate.
+      // The badge colour is driven by freshness (age < 30 s) inside updateLive.
+      const { data: snap } = await sb
+        .from('live_snapshot')
+        .select('steps, distance, duration, calories, updated_at')
+        .eq('id', 1)
+        .single();
 
-        // Latest live tick
-        const { data: snap } = await sb
-            .from('live_snapshot')
-            .select('steps, distance, duration, calories, updated_at')
-            .eq('id', 1)
-            .single();
+      if (snap) {
+        updateLive(snap);   // always show; updateLive decides badge colour
+      }
 
-        if (snap) {
-            const age = (Date.now() - new Date(snap.updated_at)) / 1000;
-            if (age < 30) {
-                updateLive({ ...snap, session_active: true });
-            }
-        }
+      // ── Session history ────────────────────────────────────────────────────
+      // Always show the last session and graph regardless of age.
+      const { data: sessions } = await sb
+        .from('session_history')
+        .select('steps, distance, duration, calories, ended_at')
+        .order('id', { ascending: false })
+        .limit(10);
 
-        // Last session + history
-        const { data: sessions } = await sb
-            .from('session_history')
-            .select('steps, distance, duration, calories, ended_at')
-            .order('id', { ascending: false })
-            .limit(10);
-
-        if (sessions && sessions.length > 0) {
-            updateLastSession({
-                ...sessions[0],
-                history: sessions
-            });
-        }
+      if (sessions && sessions.length > 0) {
+        updateLastSession({ ...sessions[0], history: sessions });
+      }
 
     } catch (e) {
-        console.warn("[loadFromPi] skipped:", e.message);
+      console.warn("[loadFromPi] skipped:", e.message);
     }
-}
+  }
 
-  // ── Supabase channel ───────────────────────────────────────────────────────
+  // ── Supabase Realtime channel ──────────────────────────────────────────────
   function clearReconnectTimer() {
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
   }
@@ -489,24 +476,12 @@ async function loadFromPi() {
   }
 
   function subscribe() {
-    // Skip if already connected or in the process of connecting
-    if (activeChannel && (channelState === "SUBSCRIBED" || channelState === "JOINING")) {
-      console.log("[Supabase] already", channelState, "— skipping");
-      return;
-    }
-
-    // Clean up stale channel before creating a new one
+    if (activeChannel && (channelState === "SUBSCRIBED" || channelState === "JOINING")) return;
     if (activeChannel) {
       try { sb.removeChannel(activeChannel); } catch (_) {}
       activeChannel = null;
     }
-
     channelState = "JOINING";
-    console.log("[Supabase] subscribing to", CHANNEL_NAME);
-
-    // FIX: no config object — the default (no self:true) correctly receives
-    // broadcasts from foreign clients (the Pi).  self:true only echoes back
-    // messages that THIS JS client sent, so it would never fire for Pi data.
     activeChannel = sb
       .channel(CHANNEL_NAME)
       .on("broadcast", { event: "live_update" }, ({ payload }) => {
@@ -529,22 +504,18 @@ async function loadFromPi() {
       });
   }
 
-  // ── Heartbeat — recover from silent disconnects ────────────────────────────
+  // ── Reconnect watchdog ─────────────────────────────────────────────────────
   setInterval(() => {
     heartbeatCount++;
-    console.log("[Supabase] heartbeat #" + heartbeatCount + " state=" + channelState);
     if (!activeChannel || channelState === "CHANNEL_ERROR" ||
         channelState === "TIMED_OUT"   || channelState === "CLOSED") {
-      console.warn("[Supabase] unhealthy — reconnecting");
       subscribe();
     }
   }, 25000);
 
   // ── Boot ───────────────────────────────────────────────────────────────────
-  // ── Boot ───────────────────────────────────────────────────────────────────
-  loadFromPi();   // populate cards immediately from MySQL via /current
-  subscribe();    // then open Supabase channel for real-time updates
-
+  loadFromPi();   // hydrate cards from Supabase DB immediately
+  subscribe();    // open Realtime channel for live updates
 </script>
 </body>
 </html>
