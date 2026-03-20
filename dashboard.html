@@ -435,24 +435,36 @@
     });
   }
 
-  // ── Pi REST fallback (best-effort on page load only) ───────────────────────
+  // ── Pi REST — single /current call on page load ──────────────────────────
+  // /current returns live state + last session + history in one request.
+  // If a hike is already in progress, the live cards populate immediately
+  // without waiting for the next 5 s watch tick.
   async function loadFromPi() {
     try {
-      const [histRes, lastRes] = await Promise.all([
-        fetch(PI_BASE + "/history",      { signal: AbortSignal.timeout(3000) }),
-        fetch(PI_BASE + "/last-session", { signal: AbortSignal.timeout(3000) })
-      ]);
-      if (histRes.ok) {
-        const hist = await histRes.json();
-        if (Array.isArray(hist) && hist.length > 0)
-          redrawDistanceGraph([...hist].reverse());
+      const res = await fetch(PI_BASE + "/current", {
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) { console.warn("[Pi] /current returned", res.status); return; }
+      const data = await res.json();
+      console.log("[Pi] /current →", data);
+
+      // Populate live cards if a session is in progress
+      if (data.live?.session_active) {
+        updateLive(data.live);
       }
-      if (lastRes.ok) {
-        const last = await lastRes.json();
-        if (last && !last.error) updateLastSession(last);
+
+      // Populate last-session card
+      if (data.last_session && !data.last_session.error) {
+        updateLastSession(data.last_session);
       }
+
+      // Populate history graph (Pi sends newest-first; graph needs oldest-first)
+      if (Array.isArray(data.history) && data.history.length > 0) {
+        redrawDistanceGraph([...data.history].reverse());
+      }
+
     } catch (e) {
-      console.warn("[Pi] REST fetch skipped:", e.message);
+      console.warn("[Pi] /current fetch skipped:", e.message);
     }
   }
 
