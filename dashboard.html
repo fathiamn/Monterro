@@ -286,8 +286,6 @@
   let activeChannel = null;
   let channelState = "CLOSED";
   let reconnectTimer = null;
-
-  // Connection freshness tracking
   let lastLiveSeenAt = 0;
 
   function fmtDuration(s) {
@@ -313,11 +311,6 @@
     }
   }
 
-  function markLiveSeen() {
-    lastLiveSeenAt = Date.now();
-    setWatchStatus(true);
-  }
-
   function refreshConnectionBadge() {
     const liveFresh = (Date.now() - lastLiveSeenAt) < 30000;
     setWatchStatus(liveFresh);
@@ -334,7 +327,8 @@
     document.getElementById("dur").textContent = fmtDuration(duration);
     document.getElementById("cal").textContent = calories.toLocaleString();
 
-    markLiveSeen();
+    lastLiveSeenAt = Date.now();
+    setWatchStatus(true);
   }
 
   function updateLastSession(data) {
@@ -485,7 +479,8 @@
         if (snap?.updated_at) {
           const ageMs = Date.now() - new Date(snap.updated_at).getTime();
           if (ageMs < 30000) {
-            markLiveSeen();
+            lastLiveSeenAt = Date.now();
+            setWatchStatus(true);
           }
         }
       }
@@ -538,7 +533,8 @@
       })
       .on("broadcast", { event: "session_end" }, ({ payload }) => {
         updateLastSession(payload);
-        markLiveSeen();
+        lastLiveSeenAt = Date.now();
+        setWatchStatus(true);
       })
       .subscribe((status, err) => {
         console.log("[Supabase]", status, err || "");
