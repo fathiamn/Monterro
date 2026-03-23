@@ -287,11 +287,9 @@
   let channelState = "CLOSED";
   let reconnectTimer = null;
 
-  // Browser-side freshness tracking
+  // Connection freshness tracking
   let lastLiveSeenAt = 0;
-  let lastStatusConnected = false;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   function fmtDuration(s) {
     s = Number(s || 0);
     const h = Math.floor(s / 3600);
@@ -322,10 +320,9 @@
 
   function refreshConnectionBadge() {
     const liveFresh = (Date.now() - lastLiveSeenAt) < 30000;
-    setWatchStatus(liveFresh || lastStatusConnected);
+    setWatchStatus(liveFresh);
   }
 
-  // ── DOM updaters ───────────────────────────────────────────────────────────
   function updateLive(payload) {
     const steps = Number(payload?.steps ?? 0);
     const distance = Number(payload?.distance ?? 0);
@@ -337,7 +334,6 @@
     document.getElementById("dur").textContent = fmtDuration(duration);
     document.getElementById("cal").textContent = calories.toLocaleString();
 
-    // Any live data means the watch is alive now
     markLiveSeen();
   }
 
@@ -357,7 +353,6 @@
     }
   }
 
-  // ── Distance graph ─────────────────────────────────────────────────────────
   const G = { LEFT: 30, RIGHT: 398, TOP: 6, BOTTOM: 94 };
 
   function svgEl(tag, attrs, text) {
@@ -473,7 +468,6 @@
     });
   }
 
-  // ── Initial hydration + polling fallback ───────────────────────────────────
   async function loadFromSupabase() {
     try {
       const { data: snap } = await sb
@@ -488,10 +482,10 @@
         document.getElementById("dur").textContent = fmtDuration(snap.duration ?? 0);
         document.getElementById("cal").textContent = Number(snap.calories ?? 0).toLocaleString();
 
-        if (snap.updated_at) {
+        if (snap?.updated_at) {
           const ageMs = Date.now() - new Date(snap.updated_at).getTime();
           if (ageMs < 30000) {
-            lastLiveSeenAt = Date.now();
+            markLiveSeen();
           }
         }
       }
@@ -512,7 +506,6 @@
     }
   }
 
-  // ── Realtime channel ────────────────────────────────────────────────────────
   function clearReconnectTimer() {
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -545,12 +538,7 @@
       })
       .on("broadcast", { event: "session_end" }, ({ payload }) => {
         updateLastSession(payload);
-        // session end still means the watch was alive just now
         markLiveSeen();
-      })
-      .on("broadcast", { event: "status" }, ({ payload }) => {
-        lastStatusConnected = !!payload?.connected;
-        refreshConnectionBadge();
       })
       .subscribe((status, err) => {
         console.log("[Supabase]", status, err || "");
@@ -564,7 +552,6 @@
       });
   }
 
-  // ── Watchdog: keep badge accurate without refresh ──────────────────────────
   setInterval(() => {
     refreshConnectionBadge();
 
@@ -576,12 +563,10 @@
     }
   }, 5000);
 
-  // Polling fallback so values still update without manual refresh
   setInterval(() => {
     loadFromSupabase();
   }, 10000);
 
-  // ── Boot ───────────────────────────────────────────────────────────────────
   setWatchStatus(false);
   loadFromSupabase();
   subscribe();
